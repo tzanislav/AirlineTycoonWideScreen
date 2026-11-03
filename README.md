@@ -2,6 +2,8 @@
 
 ## Widescreen fork
 
+Is it vibe-coded? Obviously. But it doesn't affect any of the excellent art of the game. 
+
 This is a fork of [WizzardMaker/AirlineTycoon](https://github.com/WizzardMaker/AirlineTycoon) that adds 16:9 widescreen support.
 Changes are on the `develop` branch.
 
