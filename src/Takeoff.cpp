@@ -854,6 +854,23 @@ void CTakeOffApp::InitInstance(int argc, char *argv[]) {
 //--------------------------------------------------------------------------------------------
 // Sorgt für Screen Refresh und für Ablauf der Simulation:
 //--------------------------------------------------------------------------------------------
+// Darf zwischen zwei Simulationsschritten ein Bild nur für die gleitende Kamera gezeichnet werden?
+// Nur im Flughafen ohne Menü, Dialog oder Fade, weil deren Zähler pro Bild laufen.
+static BOOL CanPaintInBetweenFrame() {
+    if (Sim.Gamestate != (GAMESTATE_PLAYING | GAMESTATE_WORKING) || TopWin != nullptr || nOptionsOpen != 0 || nWaitingForPlayer != 0 ||
+        Sim.bPause != 0 || Sim.CallItADay != 0 || Editor != EDITOR_NONE || gBlendState != -1) {
+        return FALSE;
+    }
+
+    PLAYER &qPlayer = Sim.Players.Players[Sim.localPlayer];
+    auto *pView = dynamic_cast<AirportView *>(qPlayer.LocationWin);
+    if (pView == nullptr || qPlayer.DialogWin != nullptr || (pView->IsDialogOpen() != 0) || (pView->MenuIsOpen() != 0)) {
+        return FALSE;
+    }
+
+    return pView->NeedsInBetweenFrame();
+}
+
 void CTakeOffApp::GameLoop(void * /*unused*/) {
     SLONG c = 0;
     SLONG d = 0;
@@ -2060,7 +2077,7 @@ void CTakeOffApp::GameLoop(void * /*unused*/) {
                 if (nOptionsOpen == 0 && nWaitingForPlayer == 0 && (Sim.bPause == 0) && (Sim.CallItADay == 0) && Editor == EDITOR_NONE) {
                     for (c = 0; c < Sim.Players.AnzPlayers; c++) {
                         if (Sim.Players.Players[c].GetRoom() == ROOM_AIRPORT && (Sim.Players.Players[c].LocationWin != nullptr)) {
-                            (dynamic_cast<AirportView *>(Sim.Players.Players[c].LocationWin))->MoveCamera();
+                            (dynamic_cast<AirportView *>(Sim.Players.Players[c].LocationWin))->MoveCamera(LastTime);
                         }
                     }
                 }
@@ -2068,6 +2085,12 @@ void CTakeOffApp::GameLoop(void * /*unused*/) {
                 FrameWnd->Invalidate();
 
                 RefreshNeccessary = FALSE;
+            } else if (CanPaintInBetweenFrame() != 0) {
+                // Smooth Scrolling: Zwischenbild mit interpolierter Kamera, ohne Simulationsschritt
+                MessagePump();
+                bgInBetweenFrame = TRUE;
+                FrameWnd->Invalidate();
+                bgInBetweenFrame = FALSE;
             } else {
                 MessagePump();
                 PrimaryBm.PrimaryBm.Present();

@@ -138,6 +138,15 @@ Cheaper, but the player character still steps at 20 Hz while the camera moves
 smoothly, so the character would visibly judder against the background.
 Not recommended on its own; it can be a first milestone on the way to A.
 
+**Status: implemented as a first milestone.**
+- `AirportView::MoveCamera(StepTime)` records `CameraFrom`.
+- `GetRenderViewPos()` interpolates over 50 ms and snaps on jumps > 100 px.
+- `GameFrame::Invalidate` swaps the interpolated `ViewPos` in only while painting.
+- `CanPaintInBetweenFrame()` in `Takeoff.cpp` adds extra paints, only in the plain
+  airport view while the camera is gliding.
+- Per-paint counters are skipped on those frames via `bgInBetweenFrame`: flicker,
+  shopper spawn, smoke, people-volume slew, `StatusCount`, menu unzoom.
+
 ### C. Raise the simulation rate
 
 Changes walking speeds, timings, AI pacing and network sync. Every per-step

@@ -27,7 +27,16 @@ class AirportView : public CStdRaum {
     void ReloadBitmaps(void);                  // Lädt alle Bitmaps erneut
     void FocusCameraOnPos(XY Pos, BOOL Speed); // Setzt die aktuelle Kameraposition
     void CenterCameraOnPlayer(void);
-    void MoveCamera(void);
+    void MoveCamera(DWORD StepTime);
+
+    // Smooth Scrolling (siehe Docs/Smooth-Scrolling.md): Kamera zwischen zwei Schritten nur fürs Zeichnen interpolieren
+    XY GetRenderViewPos() const;
+    BOOL NeedsInBetweenFrame() const { return static_cast<BOOL>(GetRenderViewPos() != LastRenderViewPos); }
+    XY LastRenderViewPos; // Zuletzt gezeichnete Kameraposition, gesetzt von GameFrame::Invalidate
+
+  private:
+    XY CameraFrom;             // Kameraposition vor dem letzten MoveCamera
+    DWORD CameraStepTime{0};   // Zeitpunkt des Simulationsschritts zum letzten MoveCamera
 
     // Overrides
     // ClassWizard generated virtual function overrides

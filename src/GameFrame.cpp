@@ -542,6 +542,22 @@ void GameFrame::Invalidate() {
     CStdRaum *w = nullptr;
     SLONG c = 0;
 
+    // Smooth Scrolling: für die Dauer des Zeichnens die interpolierte Kameraposition einsetzen
+    static SLONG Depth = 0;
+    XY RealViewPos[4];
+    XY RenderViewPos[4];
+    bool bSwapped[4] = {};
+    for (c = 0; c < min(Sim.Players.AnzPlayers, SLONG(4)) && Depth == 0; c++) {
+        auto *pView = dynamic_cast<AirportView *>(Sim.Players.Players[c].LocationWin);
+        if (pView != nullptr) {
+            RealViewPos[c] = Sim.Players.Players[c].ViewPos;
+            RenderViewPos[c] = pView->LastRenderViewPos = pView->GetRenderViewPos();
+            Sim.Players.Players[c].ViewPos = RenderViewPos[c];
+            bSwapped[c] = true;
+        }
+    }
+
+    Depth++;
     if (TopWin != nullptr) {
         TopWin->OnPaint();
     } else {
@@ -556,6 +572,14 @@ void GameFrame::Invalidate() {
     }
 
     OnPaint();
+    Depth--;
+
+    // Echte Kameraposition zurück, außer jemand hat sie beim Zeichnen absichtlich verändert
+    for (c = 0; c < min(Sim.Players.AnzPlayers, SLONG(4)); c++) {
+        if (bSwapped[c] && Sim.Players.Players[c].ViewPos == RenderViewPos[c]) {
+            Sim.Players.Players[c].ViewPos = RealViewPos[c];
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------

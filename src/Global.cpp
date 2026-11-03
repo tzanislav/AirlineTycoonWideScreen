@@ -147,6 +147,7 @@ BOOL bFullscreen;                 // is application Fullscreen or in Window?
 BOOL bCheatMode = FALSE;          // Ist der Cheatmode zum testen aktiviert?
 SLONG gQuickTestRun = 0;          // Depeche Mode = Alles auf die Schnelle..
 BOOL bgWarp = FALSE;              // Spieler warpt zum Ziel
+BOOL bgInBetweenFrame = FALSE;    // Zwischenbild ohne Simulationsschritt (Smooth Scrolling)
 BOOL bNoVgaRam = FALSE;           // Keine Bitmaps ins VGA-Ram legen
 BOOL bNoSpeedyBar = FALSE;        // Kein SpeedUp für die Statuszeile
 BOOL bNoQuickMouse = FALSE;       // Keine Maus-Aufrufe beim OnMouseMove

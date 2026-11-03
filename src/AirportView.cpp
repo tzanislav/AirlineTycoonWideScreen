@@ -99,6 +99,8 @@ AirportView::AirportView(BOOL bHandy, ULONG PlayerNum) : CStdRaum(bHandy, Player
 
     LastAnzPeopleOnScreen = -1;
 
+    CameraFrom = LastRenderViewPos = Sim.Players.Players[static_cast<SLONG>(PlayerNum)].ViewPos;
+
     if (Sim.GetHour() == 9 && Sim.GetMinute() == 0) {
         bgJustDidLotsOfWork = TRUE;
     }
@@ -424,7 +426,11 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
 //--------------------------------------------------------------------------------------------
 // Bewegt die Kamera ein Stück:
 //--------------------------------------------------------------------------------------------
-void AirportView::MoveCamera() {
+void AirportView::MoveCamera(DWORD StepTime) {
+    // Ausgangspunkt für die Interpolation bis zum nächsten Schritt
+    CameraFrom = Sim.Players.Players[PlayerNum].ViewPos;
+    CameraStepTime = StepTime;
+
     // Falls keine Editor, dann wird der Focus durch den Spieler bestimmt:
     if (Editor == 0) {
         if ((Sim.Players.Players[Sim.localPlayer].LocationWin != nullptr) &&
@@ -476,6 +482,24 @@ void AirportView::MoveCamera() {
     } else {
         Sim.TickerTime = 0;
     }
+}
+
+//--------------------------------------------------------------------------------------------
+// Kameraposition zum Zeichnen: zwischen dem letzten und dem aktuellen Schritt interpoliert
+//--------------------------------------------------------------------------------------------
+XY AirportView::GetRenderViewPos() const {
+    constexpr SLONG kStepMs = 50;     // Dauer eines Simulationsschritts
+    constexpr SLONG kMaxLerp = 100;   // Größere Sprünge (Flipping, Fade, Center) nicht gleiten lassen
+
+    const XY &ViewPos = Sim.Players.Players[PlayerNum].ViewPos;
+    const XY Delta = ViewPos - CameraFrom;
+
+    if (Editor != EDITOR_NONE || abs(Delta.x) > kMaxLerp || abs(Delta.y) > kMaxLerp) {
+        return ViewPos;
+    }
+
+    const SLONG t = max(0, min(static_cast<SLONG>(SDL_GetTicks() - CameraStepTime), kStepMs));
+    return CameraFrom + XY(Delta.x * t / kStepMs, Delta.y * t / kStepMs);
 }
 
 //--------------------------------------------------------------------------------------------
@@ -679,9 +703,14 @@ void AirportView::OnPaint() {
             }
         }
 
-        FlackerCount++;
+        // Zwischenbilder (Smooth Scrolling) dürfen keine Zähler weiterdrehen:
+        const BOOL bStep = static_cast<BOOL>(bgInBetweenFrame == 0);
 
-        if ((PersonsToAdd != 0) && rand() % 4 == 0 && Sim.Persons.GetNumFree() > 20) {
+        if (bStep != 0) {
+            FlackerCount++;
+        }
+
+        if ((bStep != 0) && (PersonsToAdd != 0) && rand() % 4 == 0 && Sim.Persons.GetNumFree() > 20) {
             Sim.Persons *= PERSON(Clans.GetCustomerId(0, 99), Airport.GetRandomBirthplace(0), REASON_SHOPPING, 99, 0, 0);
             PersonsToAdd--;
         }
@@ -971,12 +1000,14 @@ void AirportView::OnPaint() {
                                                 ColorFX.BlitTrans(gStenchBms[0].pBitmap, &PrimaryBm.PrimaryBm, qPlayer.Smoke[c].Position - ViewPos, nullptr,
                                                                   8 - min(qPlayer.Smoke[c].TTL / 2, 8));
 
-                                                qPlayer.Smoke[c].Position.y--;
-                                                qPlayer.Smoke[c].TTL--;
+                                                if (bStep != 0) {
+                                                    qPlayer.Smoke[c].Position.y--;
+                                                    qPlayer.Smoke[c].TTL--;
+                                                }
                                             }
                                         }
 
-                                        if (qPlayer.PlayerStinking > 15 && rand() % 4 == 0) {
+                                        if ((bStep != 0) && qPlayer.PlayerStinking > 15 && rand() % 4 == 0) {
                                             for (SLONG c = 0; c < 20; c++) {
                                                 if (qPlayer.Smoke[c].TTL == 0) {
                                                     qPlayer.Smoke[c].Position = qPerson.ScreenPos;
@@ -988,7 +1019,7 @@ void AirportView::OnPaint() {
                                             }
                                         }
 
-                                        if (qPlayer.PlayerStinking < 9999) {
+                                        if ((bStep != 0) && qPlayer.PlayerStinking < 9999) {
                                             qPlayer.PlayerStinking--;
                                         }
                                     } else if (qPlayer.PlayerSmoking != 0) {
@@ -997,12 +1028,14 @@ void AirportView::OnPaint() {
                                                 ColorFX.BlitTrans(gSmokeBms[0].pBitmap, &PrimaryBm.PrimaryBm, qPlayer.Smoke[c].Position - ViewPos, nullptr,
                                                                   8 - min(qPlayer.Smoke[c].TTL / 2, 8));
 
-                                                qPlayer.Smoke[c].Position.y--;
-                                                qPlayer.Smoke[c].TTL--;
+                                                if (bStep != 0) {
+                                                    qPlayer.Smoke[c].Position.y--;
+                                                    qPlayer.Smoke[c].TTL--;
+                                                }
                                             }
                                         }
 
-                                        if (qPlayer.PlayerSmoking > 15 && rand() % 4 == 0) {
+                                        if ((bStep != 0) && qPlayer.PlayerSmoking > 15 && rand() % 4 == 0) {
                                             for (SLONG c = 0; c < 20; c++) {
                                                 if (qPlayer.Smoke[c].TTL == 0) {
                                                     qPlayer.Smoke[c].Position = qPerson.ScreenPos;
@@ -1014,7 +1047,7 @@ void AirportView::OnPaint() {
                                             }
                                         }
 
-                                        if (qPlayer.PlayerSmoking < 99) {
+                                        if ((bStep != 0) && qPlayer.PlayerSmoking < 99) {
                                             qPlayer.PlayerSmoking--;
                                         }
                                     }
@@ -1029,16 +1062,18 @@ void AirportView::OnPaint() {
                                                 ColorFX.BlitTrans(gStenchBms[0].pBitmap, &PrimaryBm.PrimaryBm, qSmoker.Smoke[c].Position - ViewPos, nullptr,
                                                                   8 - min(qSmoker.Smoke[c].TTL / 2, 8));
 
-                                                if (rand() % 3 == 0) {
+                                                if ((bStep != 0) && rand() % 3 == 0) {
                                                     qSmoker.Smoke[c].Position.x += qSmoker.Smoke[c].vx;
                                                 }
 
-                                                qSmoker.Smoke[c].Position.y--;
-                                                qSmoker.Smoke[c].TTL--;
+                                                if (bStep != 0) {
+                                                    qSmoker.Smoke[c].Position.y--;
+                                                    qSmoker.Smoke[c].TTL--;
+                                                }
                                             }
                                         }
 
-                                        if (qSmoker.Smoking > 15 && rand() % 4 == 0) {
+                                        if ((bStep != 0) && qSmoker.Smoking > 15 && rand() % 4 == 0) {
                                             for (SLONG c = 0; c < qSmoker.Smoke.AnzEntries(); c++) {
                                                 if (qSmoker.Smoke[c].TTL == 0) {
                                                     qSmoker.Smoke[c].vx = rand() % 3 - 1;
@@ -1318,7 +1353,7 @@ void AirportView::OnPaint() {
 
             if (LastAnzPeopleOnScreen == -1) {
                 LastAnzPeopleOnScreen = AnzPeopleOnScreen;
-            } else {
+            } else if (bStep != 0) {
                 if (LastAnzPeopleOnScreen < AnzPeopleOnScreen) {
                     LastAnzPeopleOnScreen++;
                 }

@@ -2727,7 +2727,7 @@ void CStdRaum::PostPaint() {
         return;
     }
 
-    if (IgnoreNextPostPaintPump > 0) {
+    if (IgnoreNextPostPaintPump > 0 && (bgInBetweenFrame == 0)) {
         IgnoreNextPostPaintPump--;
     }
 
@@ -2764,7 +2764,7 @@ void CStdRaum::PostPaint() {
 
         // Die Statuszeile
         if ((StatusCount > 0 || (bNoSpeedyBar != 0) || (gBlendState >= 0 && gBlendState <= 8)) && PicBitmap.Size.y <= 440) {
-            if (StatusCount > 0) {
+            if (StatusCount > 0 && (bgInBetweenFrame == 0)) {
                 StatusCount--;
             }
 
@@ -2994,7 +2994,7 @@ void CStdRaum::PostPaint() {
         else if (ZoomCounter > 0 && OnscreenBitmap.Size.x > 0 && (IsDialogOpen() == 0)) {
             if (MinimumZoom >= 1.0) {
                 ZoomCounter = 0;
-            } else {
+            } else if (bgInBetweenFrame == 0) {
                 ZoomCounter -= 25;
                 if (ZoomCounter < 0) {
                     ZoomCounter = 0;

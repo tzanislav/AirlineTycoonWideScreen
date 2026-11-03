@@ -154,6 +154,7 @@ extern BOOL bFullscreen;         // is application Fullscreen or in Window?
 extern BOOL bCheatMode;          // Ist der Cheatmode zum testen aktiviert?
 extern SLONG gQuickTestRun;      // Depeche Mode = Alles auf die Schnelle..
 extern BOOL bgWarp;              // Spieler warpt zum Ziel
+extern BOOL bgInBetweenFrame;     // Zwischenbild ohne Simulationsschritt (Smooth Scrolling)
 extern BOOL bNoVgaRam;           // Keine Bitmaps ins VGA-Ram legen
 extern BOOL bCheatMode;          // Ist der Cheatmode zum testen aktiviert?
 extern BOOL bNoSpeedyBar;        // Kein SpeedUp für die Statuszeile
