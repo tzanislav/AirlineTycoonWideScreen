@@ -506,7 +506,8 @@ SLONG SB_CPrimaryBitmap::Flip() {
         }
 
         SDL_Rect target = SDL_Rect{TargetOffset.x, TargetOffset.y, TargetSize.x, TargetSize.y};
-        if (SDL_BlitScaled(lpDDSurface, nullptr, SDL_GetWindowSurface(Window), &target) < 0) {
+        const SDL_Rect source = SDL_Rect{0, 0, SourceSize.x, SourceSize.y};
+        if (SDL_BlitScaled(lpDDSurface, &source, SDL_GetWindowSurface(Window), &target) < 0) {
             return -2;
         }
 
@@ -530,7 +531,8 @@ SLONG SB_CPrimaryBitmap::Present() {
 
         const SDL_Rect target = SDL_Rect{TargetOffset.x, TargetOffset.y, TargetSize.x, TargetSize.y};
         // Copy our primary texture to the backbuffer
-        if (SDL_RenderCopy(lpDD, lpTexture, nullptr, &target) < 0) {
+        const SDL_Rect source = SDL_Rect{0, 0, SourceSize.x, SourceSize.y};
+        if (SDL_RenderCopy(lpDD, lpTexture, &source, &target) < 0) {
             return -2;
         }
 

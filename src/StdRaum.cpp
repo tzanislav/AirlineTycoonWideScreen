@@ -365,7 +365,7 @@ CStdRaum::CStdRaum(BOOL handy, ULONG playerNum, const CString &GfxLibName, __int
 
     RoomBm.ReSize(PicBitmap.Size, CREATE_SYSMEM);
 
-    WindowRect = CRect(0, 0, 640, 480);
+    WindowRect = CRect(0, 0, kLegacyW, kScreenH);
     StatusLineSizeY = 40;
 
     WinP1 = XY(WindowRect.left, WindowRect.top);
@@ -1984,7 +1984,7 @@ void CStdRaum::StopDialog() {
             Sim.Persons[DialogPar1].State &= (~PERSON_TALKING);
         }
 
-        RightAirportClip = 640;
+        RightAirportClip = kScreenW;
 
         // Bei Handy, den Raum wieder rauswerfen:
         if (DialogMedium == MEDIUM_HANDY && (Sim.Players.Players[PlayerNum].DialogWin != nullptr)) {
@@ -2075,7 +2075,7 @@ void CStdRaum::InitToolTips() {
                 SetMouseLook(CURSOR_HOT, 1001, -100, 1001);
 
                 // Inventar
-            } else if (CursorPos.IfIsWithin(250, 440, 639 - 8 - 24, 479)) {
+            } else if (CursorPos.IfIsWithin(250, kStatusBarY, WinP2.x - 1 - 8 - 24, kScreenH - 1)) {
                 SLONG ItemIndex = (CursorPos.x - 250) / 60;
 
                 if (ItemIndex < 6 && Sim.Players.Players[PlayerNum].Items.AnzEntries() > ItemIndex) {
@@ -2739,7 +2739,7 @@ void CStdRaum::PostPaint() {
     }
 
     // Ikonen rechts vom Inventar:
-    if (gMousePosition.x >= 634 - 24 - 39 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < 640 && gMousePosition.y < WinP2.y) {
+    if (gMousePosition.x >= WinP2.x - 6 - 24 - 39 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < WinP2.x && gMousePosition.y < WinP2.y) {
         StatusCount = max(StatusCount, 3);
     }
 
@@ -2769,6 +2769,17 @@ void CStdRaum::PostPaint() {
             }
 
             PrimaryBm.BlitFrom(StatusLineBms[0], WinP1.x, WinP2.y - StatusLineSizeY);
+
+            // Breitbild: Lücke zwischen Inventar und rechtem Teil mit leeren Slots füllen
+            if (WinP2.x - WinP1.x > kLegacyW) {
+                const SLONG fillStart = WinP1.x + kLegacyW - StatusLineBms[6].Size.x;
+                const SLONG fillEnd = WinP2.x - StatusLineBms[6].Size.x;
+                const SLONG slotW = StatusLineBms[5].Size.x;
+                for (SLONG x = fillStart; x < fillEnd && slotW > 0; x += slotW) {
+                    PrimaryBm.BlitFrom(StatusLineBms[5], min(x, fillEnd - slotW), WinP2.y - StatusLineSizeY);
+                }
+            }
+
             PrimaryBm.BlitFrom(StatusLineBms[6], WinP2.x - StatusLineBms[6].Size.x, WinP2.y - StatusLineSizeY);
 
             if (qPlayer.Messages.LastMessage.BeraterTyp != -1) {
@@ -2784,13 +2795,13 @@ void CStdRaum::PostPaint() {
             }
 
             if (Sim.IsTutorial != 0) {
-                PrimaryBm.BlitFromT(gTutoriumBms[0], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x, 440);
+                PrimaryBm.BlitFromT(gTutoriumBms[0], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x, kStatusBarY);
             }
 
             PrimaryBm.BlitFromT(gStatisticBms[0], WinP2.x - StatusLineBms[6].Size.x + 1, WinP2.y - StatusLineSizeY + 21);
 
             // Die Ikonen rechts vom Inventar?
-            if (gMousePosition.x >= 634 - 24 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < 640 && gMousePosition.y < WinP2.y &&
+            if (gMousePosition.x >= WinP2.x - 6 - 24 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < WinP2.x && gMousePosition.y < WinP2.y &&
                 (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
                 if (gMousePosition.y >= WinP2.y - StatusLineSizeY / 2) {
                     if ((IsDialogOpen() == 0) && (MenuIsOpen() == 0) && (MouseWait == 0) && (Sim.GetHour() > 9 || Sim.GetMinute() > 0)) {
@@ -2813,15 +2824,15 @@ void CStdRaum::PostPaint() {
                 } else if ((gStatButton != 0) && AtGetTime() - gStatButtonTimer > 400) {
                     gStatButton = 0;
                 }
-            } else if (((Sim.IsTutorial != 0) || gStatButton == 1) && gMousePosition.IfIsWithin(640 - 32 - 39, 440, 607, 479) && (IsDialogOpen() == 0) &&
+            } else if (((Sim.IsTutorial != 0) || gStatButton == 1) && gMousePosition.IfIsWithin(WinP2.x - 32 - 39, kStatusBarY, WinP2.x - 33, kScreenH - 1) && (IsDialogOpen() == 0) &&
                        (MenuIsOpen() == 0)) {
-                PrimaryBm.BlitFromT(gTutoriumBms[1], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x + 8, 440 + 11);
+                PrimaryBm.BlitFromT(gTutoriumBms[1], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x + 8, kStatusBarY + 11);
                 SetMouseLook(CURSOR_HOT, 2101, -100, 0);
 
                 if ((gStatButton != 0) && AtGetTime() - gStatButtonTimer < 400) {
                     if (gStatButton == 1) {
-                        PrimaryBm.BlitFromT(gTutoriumBms[0], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x, 440);
-                        PrimaryBm.BlitFromT(gTutoriumBms[2], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x + 8, 440 + 11);
+                        PrimaryBm.BlitFromT(gTutoriumBms[0], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x, kStatusBarY);
+                        PrimaryBm.BlitFromT(gTutoriumBms[2], WinP2.x - StatusLineBms[6].Size.x + 1 - gTutoriumBms[0].Size.x + 8, kStatusBarY + 11);
                     }
                 } else if ((gStatButton != 0) && AtGetTime() - gStatButtonTimer > 400) {
                     gStatButton = 0;
@@ -3088,7 +3099,7 @@ void CStdRaum::PostPaint() {
                 p.y = 0;
             }
 
-            p.x = p.x * (WinP2.x - WinP1.x + 1) / 640;
+            p.x = p.x * (WinP2.x - WinP1.x + 1) / (WinP2.x - WinP1.x);
             p.y = p.y * (WinP2.y - WinP1.y - StatusLineSizeY + 1) / 440;
 
             PrimaryBm.BlitFromT(TipBm, p);
@@ -3315,7 +3326,7 @@ void CStdRaum::OnLButtonDown(UINT /*unused*/, CPoint point) {
         }
     }
     // Klick rechts vom Inventar?
-    else if (gMousePosition.x >= 634 - 24 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < 640 && gMousePosition.y < WinP2.y) {
+    else if (gMousePosition.x >= WinP2.x - 6 - 24 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < WinP2.x && gMousePosition.y < WinP2.y) {
         PLAYER &qPlayer = Sim.Players.Players[Sim.localPlayer];
 
         // Options:
@@ -3342,7 +3353,7 @@ void CStdRaum::OnLButtonDown(UINT /*unused*/, CPoint point) {
         }
     }
     // Klick ins Inventar?
-    else if (point.x >= WinP1.x + (WinP2.x - WinP1.x) * 4 / 10 && point.y >= WinP2.y - StatusLineSizeY && point.x < 634 && point.y < WinP2.y) {
+    else if (point.x >= WinP1.x + 256 && point.y >= WinP2.y - StatusLineSizeY && point.x < WinP2.x - 6 && point.y < WinP2.y) {
         SLONG ItemIndex = 0;
 
         ItemIndex = (point.x - 250) / 60;
@@ -3790,7 +3801,7 @@ void CStdRaum::OnRButtonDown(UINT /*nFlags*/, CPoint point) {
         StatusCount = max(StatusCount, 3);
     }
     // Klick ins Inventar?
-    else if (point.x >= WinP1.x + (WinP2.x - WinP1.x) * 4 / 10 && point.y >= WinP2.y - StatusLineSizeY && point.x < 634 && point.y < WinP2.y &&
+    else if (point.x >= WinP1.x + 256 && point.y >= WinP2.y - StatusLineSizeY && point.x < WinP2.x - 6 && point.y < WinP2.y &&
              CurrentMenu == MENU_NONE && DialogPartner == TALKER_NONE) {
         SLONG ItemIndex = 0;
 
@@ -6223,7 +6234,7 @@ void CStdRaum::MenuLeftClick(XY Pos) {
             }
         }
         // Klick ins Inventar?
-        else if (gMousePosition.x >= WinP1.x + (WinP2.x - WinP1.x) * 4 / 10 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < 634 - 24 &&
+        else if (gMousePosition.x >= WinP1.x + 256 && gMousePosition.y >= WinP2.y - StatusLineSizeY && gMousePosition.x < WinP2.x - 6 - 24 &&
                  gMousePosition.y < WinP2.y) {
             SLONG ItemIndex = (gMousePosition.x - 250) / 60;
 

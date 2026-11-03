@@ -31,6 +31,7 @@ class CStdRaum {
     SLONG LastScrollTime;
     SLONG HandyOffset; // x-Verschiebung des Bildes für den Handy-Dialog
     SLONG KonstruktorFinished;
+    BOOL bWideScreen{FALSE}; // TRUE=Fenster nutzt die volle Breite (kScreenW), sonst 4:3 (kLegacyW)
 
     // Attributes
   protected:
@@ -89,6 +90,8 @@ class CStdRaum {
     BOOL DisplayThisBubble{};    // TRUE, wenn Sprechblase des Dialoges angezeigt werden soll (FALSE, um sie wegen der Sprachausgabe auszublenden.)
 
   public:
+    BOOL IsWideScreen() const { return bWideScreen; }
+
     SLONG TimeAtStart{}; // AtGetTime() als Menü oder Dialogblase geöffnet wurde
 
     BOOL PayingForCall{}; // Bezahlt der Spieler dieses Gespräch?

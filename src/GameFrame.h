@@ -33,6 +33,7 @@ class GameFrame {
     void Invalidate(void);
     void UpdateWindow() const;
     void UpdateFrameSize() const;
+    void UpdateActiveScreenWidth() const;
     void RePostMessage(const CPoint &Pos) const;
     static void PrepareFade(void);
     static bool Pause(bool fPause); // AG

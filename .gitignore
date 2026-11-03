@@ -21,3 +21,9 @@ gamefiles/*
 .vscode
 !.vscode/extensions.json
 .DS_Store
+# Extracted game art (gli_tool export) - copyrighted, do not commit
+art-export/
+# Game data formats - never commit (owned by Black Forest Games)
+*.gli
+*.smk
+*.res

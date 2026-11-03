@@ -63,7 +63,7 @@ SBPRIMARYBM PrimaryBm; // DirectDraw primary & back surface
 SB_CCursor *pCursor = nullptr;
 SLONG gRepairPrice[] = {1200, 18000, 48000, 150000};
 SLONG gWerbePrice[] = {1000, 10000, 50000, 100000, 250000, 2500000, 2000, 8000, 22000, 56000, 120000, 1400000, 5000, 93000, 290000, 870000, 4925000, 60000000};
-SLONG RightAirportClip = 640;
+SLONG RightAirportClip = kScreenW;
 
 SB_CBitmapMain *bitmapMain;
 GfxMain *pGfxMain;

@@ -154,6 +154,13 @@ constexpr char VersionString[] = FILE_VERSION_STRING;
 #define DAYS_WITHOUT_LAPTOP 7
 
 // Der Einfachheit halber Maximalwerte für ein paar Tabellen:
+// Bildschirmauflösung (siehe Docs/Widescreen-16x9.md)
+constexpr SLONG kScreenW = 854;                           // Interne Breite des Backbuffers
+constexpr SLONG kScreenH = 480;                           // Interne Höhe des Backbuffers
+constexpr SLONG kLegacyW = 640;                           // Breite der 4:3-Raumgrafiken
+constexpr SLONG kRoomOffsetX = (kScreenW - kLegacyW) / 2; // Pillarbox-Offset für 4:3-Räume
+constexpr SLONG kStatusBarY = 440;                        // Oberkante der Statuszeile
+
 #define MAX_BODIES 30
 #define MAX_TYCOONS 30
 #define MAX_PLANETYPES 200

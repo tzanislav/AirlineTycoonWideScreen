@@ -497,7 +497,7 @@ void SBPRIMARYBM::Flip(XY /*WindowPos*/, BOOL /*ShowFPS*/) {
                     }
 
                     // if (((CStdRaum*)Sim.Players.Players[Sim.localPlayer].LocationWin)->PicBitmap.Size.y==480)
-                    PrimaryBm.SetClipRect(CRect(0, 0, 640, 480));
+                    PrimaryBm.SetClipRect(CRect(0, 0, kScreenW, kScreenH));
                     /*else
                       PrimaryBm.SetClipRect(CRect(0,0,640,440)); */
 
@@ -510,9 +510,9 @@ void SBPRIMARYBM::Flip(XY /*WindowPos*/, BOOL /*ShowFPS*/) {
                                 SB_CBitmapKey TgtKey(*gBlendBm2.pBitmap);
 
                                 if (SrcKey.Bitmap != nullptr) {
-                                    for (SLONG y = 0; y < 480; y++) {
+                                    for (SLONG y = 0; y < kScreenH; y++) {
                                         memcpy(static_cast<char *>(TgtKey.Bitmap) + y * TgtKey.lPitch, static_cast<char *>(SrcKey.Bitmap) + y * SrcKey.lPitch,
-                                               640 * 2);
+                                               kScreenW * 2);
                                     }
                                 }
                             }
@@ -521,7 +521,7 @@ void SBPRIMARYBM::Flip(XY /*WindowPos*/, BOOL /*ShowFPS*/) {
                     } else if (gBlendState != 0) {
                         ColorFX.ApplyOn2(gBlendState, gBlendBm.pBitmap, 8 - gBlendState, gBlendBm2.pBitmap, &PrimaryBm);
                     }
-                    PrimaryBm.SetClipRect(CRect(0, 0, 640, 480));
+                    PrimaryBm.SetClipRect(CRect(0, 0, kScreenW, kScreenH));
 
                     gBlendState--;
                 }

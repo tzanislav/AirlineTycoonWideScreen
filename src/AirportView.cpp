@@ -58,6 +58,13 @@ AirportView::AirportView(BOOL bHandy, ULONG PlayerNum) : CStdRaum(bHandy, Player
     bgWarp = FALSE;
 
     Editor = EDITOR_NONE;
+
+    // Der Flughafen nutzt die volle Breite, Räume bleiben 4:3:
+    bWideScreen = TRUE;
+    WindowRect.right = kScreenW;
+    WinP2.x = kScreenW;
+    Sim.Players.Players[static_cast<SLONG>(PlayerNum)].WinP2 = WinP2;
+
     Sim.Players.Players[static_cast<SLONG>(PlayerNum)].CameraSpeed = XY(0, 0);
     Sim.Players.Players[static_cast<SLONG>(PlayerNum)].ViewPos = XY(0, 0);
 
@@ -80,7 +87,7 @@ AirportView::AirportView(BOOL bHandy, ULONG PlayerNum) : CStdRaum(bHandy, Player
 
     if (Sim.ShowExtrablatt != -1) {
         MenuStart(MENU_EXTRABLATT, Sim.ShowExtrablatt);
-        MenuSetZoomStuff(XY(320, 240), 0.17, FALSE, 10);
+        MenuSetZoomStuff(XY(kLegacyW / 2, kScreenH / 2), 0.17, FALSE, 10);
         Sim.ShowExtrablatt = -1;
 
         Sim.Players.Players[Sim.localPlayer].WalkStop();
@@ -113,11 +120,17 @@ AirportView::~AirportView() {
 void AirportView::ReloadBitmaps() {}
 
 //--------------------------------------------------------------------------------------------
+// Rechte Kameragrenze: Die Ansicht darf höchstens kLegacyW/2 Pixel über Airport.RightEnd
+// hinaus zeigen, wie im 4:3-Original. Dahinter gibt es keine Grafiken.
+//--------------------------------------------------------------------------------------------
+static SLONG MaxViewPosX(SLONG SizeX) { return Airport.RightEnd - SizeX - (kScreenW - kLegacyW) / 2; }
+
+//--------------------------------------------------------------------------------------------
 // Setzt die aktuelle Kameraposition
 //--------------------------------------------------------------------------------------------
 void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
     SLONG Tmp = 0;
-    SLONG SizeX = 320;
+    SLONG SizeX = kScreenW / 2;
     static SLONG LastScrollTime;
     static SLONG gMouseScrollSpeed = 0;
     XY &ViewPos = Sim.Players.Players[PlayerNum].ViewPos;
@@ -194,8 +207,8 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
         if (ViewPos.x < Airport.LeftEnd) {
             ViewPos.x = Airport.LeftEnd;
         }
-        if (ViewPos.x + 320 > Airport.RightEnd) {
-            ViewPos.x = Airport.RightEnd - 320;
+        if (ViewPos.x > MaxViewPosX(kScreenW / 2)) {
+            ViewPos.x = MaxViewPosX(kScreenW / 2);
         }
         if (ViewPos.x < -1000) {
             DebugBreak();
@@ -208,7 +221,7 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
     if (gMouseScroll == 0) {
         if (Sim.Options.OptionFlipping != 0) {
             // Spielfigur in X-Richtung zentrieren:
-            SizeX = 320;
+            SizeX = kScreenW / 2;
 
             if ((Sim.Players.Players[PlayerNum].DialogWin != nullptr) && (Sim.Players.Players[PlayerNum].DialogWin)->TempScreenScrollV != 1) {
                 SizeX /= 2;
@@ -218,16 +231,16 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
 
             // X-Flipping:
             if (Pos.x < ViewPos.x + 90) {
-                ViewPos.x = Pos.x - 540;
-            } else if (Pos.x > ViewPos.x + 550) {
+                ViewPos.x = Pos.x - (kScreenW - 100);
+            } else if (Pos.x > ViewPos.x + (kScreenW - 90)) {
                 ViewPos.x = Pos.x - 100;
             }
 
             if (ViewPos.x < Airport.LeftEnd) {
                 ViewPos.x = Airport.LeftEnd;
             }
-            if (ViewPos.x + SizeX > Airport.RightEnd) {
-                ViewPos.x = Airport.RightEnd - SizeX;
+            if (ViewPos.x > MaxViewPosX(SizeX)) {
+                ViewPos.x = MaxViewPosX(SizeX);
             }
 
             if (ViewPos.x < -1000) {
@@ -240,8 +253,8 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
             if (Pos.y < -10) {
                 Pos.y = -10;
             }
-            if (Pos.y > 440 - (WinP2.y - WinP1.y - StatusLineSizeY)) {
-                Pos.y = 440 - (WinP2.y - WinP1.y - StatusLineSizeY);
+            if (Pos.y > kStatusBarY - (WinP2.y - WinP1.y - StatusLineSizeY)) {
+                Pos.y = kStatusBarY - (WinP2.y - WinP1.y - StatusLineSizeY);
             }
 
             if (Speed != 0) {
@@ -274,7 +287,7 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
         } else // Scrolling:
         {
             // Spielfigur in X-Richtung zentrieren:
-            SizeX = 320;
+            SizeX = kScreenW / 2;
 
             if ((Sim.Players.Players[PlayerNum].DialogWin != nullptr) && (Sim.Players.Players[PlayerNum].DialogWin)->TempScreenScrollV != 1) {
                 SizeX /= 2;
@@ -288,8 +301,8 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
             if (Pos.x < Airport.LeftEnd) {
                 Pos.x = Airport.LeftEnd;
             }
-            if (Pos.x + SizeX > Airport.RightEnd) {
-                Pos.x = Airport.RightEnd - SizeX;
+            if (Pos.x > MaxViewPosX(SizeX)) {
+                Pos.x = MaxViewPosX(SizeX);
             }
 
             // Spielfigur in Y-Richtung zentrieren:
@@ -298,8 +311,8 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
             if (Pos.y < -10) {
                 Pos.y = -10;
             }
-            if (Pos.y > 440 - (WinP2.y - WinP1.y - StatusLineSizeY)) {
-                Pos.y = 440 - (WinP2.y - WinP1.y - StatusLineSizeY);
+            if (Pos.y > kStatusBarY - (WinP2.y - WinP1.y - StatusLineSizeY)) {
+                Pos.y = kStatusBarY - (WinP2.y - WinP1.y - StatusLineSizeY);
             }
 
             if (Speed != 0) {
@@ -399,8 +412,8 @@ void AirportView::FocusCameraOnPos(XY Pos, BOOL Speed) {
     if (ViewPos.x < Airport.LeftEnd) {
         ViewPos.x = Airport.LeftEnd;
     }
-    if (ViewPos.x + SizeX > Airport.RightEnd) {
-        ViewPos.x = Airport.RightEnd - SizeX;
+    if (ViewPos.x > MaxViewPosX(SizeX)) {
+        ViewPos.x = MaxViewPosX(SizeX);
     }
 
     if (ViewPos.x < -1000) {
@@ -428,8 +441,8 @@ void AirportView::MoveCamera() {
                 XY &ViewPos = Sim.Players.Players[PlayerNum].ViewPos;
 
                 // Über große Strecken lieber faden als scrollen
-                if (abs((Sim.Persons[PlayerIndex].ScreenPos.x - ViewPos.x)) > 640 && (Sim.Options.OptionBlenden != 0)) {
-                    ViewPos.x = Sim.Persons[PlayerIndex].ScreenPos.x - 320;
+                if (abs((Sim.Persons[PlayerIndex].ScreenPos.x - ViewPos.x)) > kScreenW && (Sim.Options.OptionBlenden != 0)) {
+                    ViewPos.x = Sim.Persons[PlayerIndex].ScreenPos.x - kScreenW / 2;
                     if (FrameWnd != nullptr) {
                         GameFrame::PrepareFade();
                     }
@@ -484,7 +497,7 @@ void AirportView::CenterCameraOnPlayer() {
             XY &ViewPos = Sim.Players.Players[PlayerNum].ViewPos;
 
             // Spielfigur in X-Richtung zentrieren:
-            SizeX = 320;
+            SizeX = kScreenW / 2;
 
             if ((Sim.Players.Players[PlayerNum].DialogWin != nullptr) && (Sim.Players.Players[PlayerNum].DialogWin)->TempScreenScrollV != 1) {
                 SizeX /= 2;
@@ -495,8 +508,8 @@ void AirportView::CenterCameraOnPlayer() {
             if (ViewPos.x < Airport.LeftEnd) {
                 ViewPos.x = Airport.LeftEnd;
             }
-            if (ViewPos.x + SizeX > Airport.RightEnd) {
-                ViewPos.x = Airport.RightEnd - SizeX;
+            if (ViewPos.x > MaxViewPosX(SizeX)) {
+                ViewPos.x = MaxViewPosX(SizeX);
             }
 
             if (ViewPos.x < -1000) {
@@ -552,7 +565,7 @@ void AirportView::OnPaint() {
     SLONG KioskerIndexZ = Bricks(static_cast<SLONG>(0x10000000) + 852);
     SLONG RouteBoxIndex = Bricks(static_cast<SLONG>(0x10000000) + 421);
 
-    SLONG RightClip = 640;
+    SLONG RightClip = kScreenW;
 
     SLONG cnt = 0;
     for (c = 0; c < static_cast<ULONG>(Sim.AirportSmacks.AnzEntries()); c++) {
@@ -734,18 +747,18 @@ void AirportView::OnPaint() {
                         switch (Airport.ClipMarkers[c - 1].Type) {
                         case RUNE_CLIPMIDDLE: // Büros verdecken
                             PrimaryBm.PrimaryBm.SetClipRect(
-                                CRect(max(RangeDrawn - ViewPos.x, 0), MiddleHeight, min(Airport.ClipMarkers[c].Position - ViewPos.x, RightClip), 440));
+                                CRect(max(RangeDrawn - ViewPos.x, 0), MiddleHeight, min(Airport.ClipMarkers[c].Position - ViewPos.x, RightClip), kStatusBarY));
                             break;
                         case RUNE_CLIPNONE: // Nix verdeckt
                             PrimaryBm.PrimaryBm.SetClipRect(
-                                CRect(max(RangeDrawn - ViewPos.x, 0), 0, min(Airport.ClipMarkers[c].Position - ViewPos.x, RightClip), 440));
+                                CRect(max(RangeDrawn - ViewPos.x, 0), 0, min(Airport.ClipMarkers[c].Position - ViewPos.x, RightClip), kStatusBarY));
                             break;
                         default:
                             DebugBreak();
                         }
 
                         if (sizes[0] + sizes[1] > 0) {
-                            for (d = 640 / (sizes[0] + sizes[1]) + 2; d >= 0; d--) {
+                            for (d = kScreenW / (sizes[0] + sizes[1]) + 2; d >= 0; d--) {
                                 BrickWait[ParallaxIndex[0]].Start();
                                 Bricks[ParallaxIndex[0]].BlitAt(PrimaryBm, 0,
                                                                 ((100000 - (ViewPos.x * 16)) >> 6) % (sizes[0] + sizes[1]) - (sizes[0] + sizes[1]) +
@@ -760,7 +773,7 @@ void AirportView::OnPaint() {
                         }
 
                         if (sizes[2] > 0) {
-                            for (d = 640 / sizes[2] + 2; d >= 0; d--) {
+                            for (d = kScreenW / sizes[2] + 2; d >= 0; d--) {
                                 BrickWait[ParallaxIndex[2]].Start();
                                 Bricks[ParallaxIndex[2]].BlitAt(PrimaryBm, 0, ((100000 - (ViewPos.x * 30)) >> 6) % sizes[2] - sizes[2] + d * sizes[2],
                                                                 WinP1.y - 18 + 18 + 34);
@@ -769,7 +782,7 @@ void AirportView::OnPaint() {
                         }
 
                         if (sizes[3] > 0) {
-                            for (d = 640 / sizes[3] + 2; d >= 0; d--) {
+                            for (d = kScreenW / sizes[3] + 2; d >= 0; d--) {
                                 BrickWait[ParallaxIndex[3]].Start();
                                 Bricks[ParallaxIndex[3]].BlitAt(PrimaryBm, 0, ((100000 - (ViewPos.x * 42)) >> 6) % sizes[3] - sizes[3] + d * sizes[3],
                                                                 WinP1.y - 18 + 18 + 34 + 44);
@@ -778,7 +791,7 @@ void AirportView::OnPaint() {
                         }
 
                         if (sizes[4] > 0) {
-                            for (d = 640 / sizes[4] + 2; d >= 0; d--) {
+                            for (d = kScreenW / sizes[4] + 2; d >= 0; d--) {
                                 BrickWait[ParallaxIndex[4]].Start();
                                 Bricks[ParallaxIndex[4]].BlitAt(PrimaryBm, 0, ((100000 - (ViewPos.x * 56)) >> 6) % sizes[4] - sizes[4] + d * sizes[4],
                                                                 WinP1.y - 18 + 18 + 34 + 44 + 72);
@@ -789,18 +802,18 @@ void AirportView::OnPaint() {
 
                     RangeDrawn = Airport.ClipMarkers[c].Position;
 
-                    if (RangeDrawn >= ViewPos.x + 640) {
+                    if (RangeDrawn >= ViewPos.x + kScreenW) {
                         break;
                     }
                 }
 
-                PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, RightClip, 440));
+                PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, RightClip, kStatusBarY));
 
                 // Runway rechts aussen:
                 Bricks[FloorFIndex].BlitAt(PrimaryBm, 0, (Airport.RightEnd - ViewPos.x) - 20 - 89, WinP1.y + 34 + 44 + 72 + 70);
             }
 
-            PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, RightClip, 440));
+            PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, RightClip, kStatusBarY));
 
             // Flugzeuge von allen Spielern auf dem Runway zeigen:
             if (Sim.Options.OptionPlanes != 0) {
@@ -1221,7 +1234,7 @@ void AirportView::OnPaint() {
                                     }
                                 }
 
-                                PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, 640, 440));
+                                PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, kScreenW, kStatusBarY));
                             }
 
                             if (Editor == EDITOR_BUILDS &&
@@ -1237,7 +1250,7 @@ void AirportView::OnPaint() {
 
                                 static bool enableEditor = true;
 
-                                if (enableEditor && qBuild.ScreenPos.x - ViewPos.x + WinP1.x > -10 && qBuild.ScreenPos.x - ViewPos.x + WinP1.x < 650) {
+                                if (enableEditor && qBuild.ScreenPos.x - ViewPos.x + WinP1.x > -10 && qBuild.ScreenPos.x - ViewPos.x + WinP1.x < kScreenW + 10) {
                                     SDL_Surface *Surf = PrimaryBm.PrimaryBm.GetSurface();
 
                                     TTF_Font *Font = TTF_OpenFont("arial.ttf", 9); // Arial
@@ -1281,7 +1294,7 @@ void AirportView::OnPaint() {
 
                 if (PlayerIndex != -1 && Sim.Persons[PlayerIndex].Dir < 8) {
                     if (Sim.Persons[PlayerIndex].Position.x < Sim.Players.Players[PlayerNum].ViewPos.x - 40 ||
-                        Sim.Persons[PlayerIndex].Position.x > Sim.Players.Players[PlayerNum].ViewPos.x + 650) {
+                        Sim.Persons[PlayerIndex].Position.x > Sim.Players.Players[PlayerNum].ViewPos.x + kScreenW + 10) {
                         if (Sim.Persons[PlayerIndex].Dir == 1 || Sim.Persons[PlayerIndex].Dir == 2 || Sim.Persons[PlayerIndex].Dir == 3) {
                             gShowCursorFeet = 0;
                         } else if (Sim.Persons[PlayerIndex].Dir == 5 || Sim.Persons[PlayerIndex].Dir == 6 || Sim.Persons[PlayerIndex].Dir == 7) {
@@ -1315,7 +1328,7 @@ void AirportView::OnPaint() {
             }
 
             AmbientManager.SetVolume(AMBIENT_PEOPLE, LastAnzPeopleOnScreen * 2);
-            AmbientManager.SetVolume(AMBIENT_JET_FIELD, 150 - (Airport.RightEnd - (ViewPos.x + 320)) / 6);
+            AmbientManager.SetVolume(AMBIENT_JET_FIELD, 150 - (Airport.RightEnd - (ViewPos.x + kScreenW / 2)) / 6);
 
             // Draw intuitive Walknet:
             if (Editor == EDITOR_LINKS) {
@@ -1381,7 +1394,7 @@ void AirportView::OnPaint() {
                 }
             }
 
-            PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, 640, 480));
+            PrimaryBm.PrimaryBm.SetClipRect(CRect(0, 0, kScreenW, kScreenH));
 
             // Die Statuszeile mit ihren Anzeigen...
             CStdRaum::OnPaint();
@@ -1427,11 +1440,11 @@ void AirportView::OnPaint() {
                     SetMouseLook(CURSOR_HOT, 5000 + c, ROOM_AIRPORT, 10);
                 }
             }
-            if ((IsDialogOpen() == 0) && (MenuIsOpen() == 0) && (Sim.bPause == 0) && gMousePosition.y < 440) {
+            if ((IsDialogOpen() == 0) && (MenuIsOpen() == 0) && (Sim.bPause == 0) && gMousePosition.y < kStatusBarY) {
                 if (gMousePosition.x <= 10 && ViewPos.x > Airport.LeftEnd) {
                     SetMouseLook(CURSOR_LEFT, 0, ROOM_AIRPORT, 6010);
                 }
-                if (gMousePosition.x >= 630 && ViewPos.x + 320 < Airport.RightEnd) {
+                if (gMousePosition.x >= kScreenW - 10 && ViewPos.x < MaxViewPosX(kScreenW / 2)) {
                     SetMouseLook(CURSOR_RIGHT, 0, ROOM_AIRPORT, 6011);
                 }
             }
@@ -1479,7 +1492,7 @@ void AirportView::OnLButtonDown(UINT nFlags, CPoint point) {
     if (Sim.Players.Players[PlayerNum].RunningToToilet != 0) {
         return;
     }
-    if ((Editor == 0) && gMousePosition.y < 440 && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
+    if ((Editor == 0) && gMousePosition.y < kStatusBarY && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
         Sim.Persons[Sim.Persons.GetPlayerIndex(PlayerNum)].Running = FALSE;
     }
 
@@ -1498,7 +1511,7 @@ void AirportView::OnLButtonDown(UINT nFlags, CPoint point) {
         return;
     }
 
-    if (Sim.FocusPerson != -1 && gMousePosition.y < 440 && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
+    if (Sim.FocusPerson != -1 && gMousePosition.y < kStatusBarY && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
         Sim.FocusPerson = -1;
     }
 
@@ -1581,7 +1594,7 @@ void AirportView::OnLButtonDown(UINT nFlags, CPoint point) {
                         MenuLeftClick(point);
                         gMouseLButtonDownTimer = AtGetTime() - 10000;
                     } else {
-                        if (Sim.bNoTime == FALSE && gMousePosition.y < 440 && (MouseWait == 0) && Sim.Players.Players[PlayerNum].IsWalking2Player == -1 &&
+                        if (Sim.bNoTime == FALSE && gMousePosition.y < kStatusBarY && (MouseWait == 0) && Sim.Players.Players[PlayerNum].IsWalking2Player == -1 &&
                             qPlayerPerson.StatePar == 0) {
                             // Hat der Spieler auf einen anderen Spieler geklickt?
                             for (SLONG d = SLONG(Sim.Persons.AnzEntries()) - 1; d >= 0; d--) {
@@ -1597,8 +1610,8 @@ void AirportView::OnLButtonDown(UINT nFlags, CPoint point) {
 
                                         if (gMousePosition.IfIsWithin(p.x - (qClan.Phasen[0])[0].Size.x / 2, p.y - (qClan.Phasen[0])[0].Size.y,
                                                                       p.x + (qClan.Phasen[0])[0].Size.x / 2, p.y)) {
-                                            if (abs(qPerson.Position.x - qPlayerPerson.Position.x) < 640) {
-                                                if (abs(qPerson.Position.y - qPlayerPerson.Position.y) < 640) {
+                                            if (abs(qPerson.Position.x - qPlayerPerson.Position.x) < kScreenW) {
+                                                if (abs(qPerson.Position.y - qPlayerPerson.Position.y) < kScreenW) {
                                                     if (qPlayer.GetRoom() == ROOM_AIRPORT) {
                                                         if (qPlayer.CallItADay == FALSE) {
                                                             if ((qPlayer.IsStuck == 0) && (qPlayer.IsTalking == 0)) {
@@ -1724,7 +1737,7 @@ void AirportView::OnLButtonDown(UINT nFlags, CPoint point) {
                                 SLONG p = Sim.Persons[Sim.Persons.GetPlayerIndex(PlayerNum)].Position.x - Sim.Players.Players[PlayerNum].ViewPos.x;
 
                                 // Falls Person sichtbar, dann C&C-Scroll abschalten:
-                                if (p > -5 && p < 645) {
+                                if (p > -5 && p < kScreenW + 5) {
                                     gMouseScroll = 0;
                                 }
 
@@ -1812,7 +1825,7 @@ void AirportView::OnLButtonUp(UINT /*nFlags*/, CPoint point) {
 
     // Ist das Fenster hier zuständig? Ist der Klick in diesem Fenster?
     if (point.x >= WinP1.x && point.x <= WinP2.x && point.y >= WinP1.y && point.y <= WinP2.y && (MenuIsOpen() == 0)) {
-        if (AtGetTime() - gMouseLButtonDownTimer < 500 && (gMouseScroll != 0) && (Editor == 0) && gMousePosition.y < 440 && (MouseWait == 0)) {
+        if (AtGetTime() - gMouseLButtonDownTimer < 500 && (gMouseScroll != 0) && (Editor == 0) && gMousePosition.y < kStatusBarY && (MouseWait == 0)) {
             if (Sim.Players.Players[PlayerNum].IsWalking2Player == -1 && (IsDialogOpen() == 0)) {
                 // gMouseScroll=0;
                 Sim.Players.Players[PlayerNum].WalkToMouseClick(gMousePosition + Sim.Players.Players[PlayerNum].ViewPos);
@@ -1864,14 +1877,14 @@ void AirportView::OnRButtonDown(UINT nFlags, CPoint point) {
 
     DefaultOnRButtonDown();
 
-    if (Sim.FocusPerson != -1 && gMousePosition.y < 440 && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
+    if (Sim.FocusPerson != -1 && gMousePosition.y < kStatusBarY && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
         Sim.FocusPerson = -1;
         return;
     }
 
-    if (gMousePosition.y < 440 && (gMouseScroll != 0) && (Editor == 0) && (MouseWait == 0)) {
+    if (gMousePosition.y < kStatusBarY && (gMouseScroll != 0) && (Editor == 0) && (MouseWait == 0)) {
         XY &ViewPos = Sim.Players.Players[PlayerNum].ViewPos;
-        SLONG SizeX = 320;
+        SLONG SizeX = kScreenW / 2;
         XY Pos = Sim.Persons[Sim.Persons.GetPlayerIndex(PlayerNum)].ScreenPos;
 
         gMouseScroll = FALSE;
@@ -1886,12 +1899,12 @@ void AirportView::OnRButtonDown(UINT nFlags, CPoint point) {
         if (Pos.x < Airport.LeftEnd) {
             Pos.x = Airport.LeftEnd;
         }
-        if (Pos.x + SizeX > Airport.RightEnd) {
-            Pos.x = Airport.RightEnd - SizeX;
+        if (Pos.x > MaxViewPosX(SizeX)) {
+            Pos.x = MaxViewPosX(SizeX);
         }
 
         // Über große Strecken lieber faden als scrollen
-        if (abs(Pos.x - ViewPos.x) > 640) {
+        if (abs(Pos.x - ViewPos.x) > kScreenW) {
             ViewPos.x = Pos.x;
 
             if (ViewPos.x < -1000) {
@@ -1911,7 +1924,7 @@ void AirportView::OnRButtonDown(UINT nFlags, CPoint point) {
         }
     }
 
-    if ((Editor == 0) && (ConvertMousePosition(point, &p) != 0) && p.IfIsWithin(0, 0, 639, 479)) {
+    if ((Editor == 0) && (ConvertMousePosition(point, &p) != 0) && p.IfIsWithin(0, 0, kScreenW - 1, kScreenH - 1)) {
         if (MenuIsOpen() != 0) {
             MenuRightClick(point);
         } else {
@@ -3752,7 +3765,7 @@ void AIRPORT::PumpDoors() {
                     Doors[c].Dir = 0;
 
                     if (Sim.Players.Players[Sim.localPlayer].GetRoom() == ROOM_AIRPORT &&
-                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + 320 - Doors[c].ArrayPos.x * 44) < 400) {
+                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + kScreenW / 2 - Doors[c].ArrayPos.x * 44) < 400) {
                         gDoorClose.Play(DSBPLAY_NOSTOP, Sim.Options.OptionEffekte * 100 / 7);
                     }
                 }
@@ -3792,14 +3805,14 @@ void AIRPORT::TryDoor(XY ArrayPos, BOOL Player, SLONG PlayerNum) {
                 if (Doors[c].Dir == 0 && Doors[c].State == 0) {
                     Doors[c].Dir = 1;
                     if (Sim.Players.Players[Sim.localPlayer].GetRoom() == ROOM_AIRPORT &&
-                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + 320 - Doors[c].ArrayPos.x * 44) < 400) {
+                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + kScreenW / 2 - Doors[c].ArrayPos.x * 44) < 400) {
                         gArabDoorFx.Play(DSBPLAY_NOSTOP, Sim.Options.OptionEffekte * 100 / 7);
                     }
                 } else if (Doors[c].Dir == 0 && Doors[c].State >= 40 && ArrayPos.y != 9) {
                     Doors[c].State = (10 - 1) * 2;
                     Doors[c].Dir = -1;
                     if (Sim.Players.Players[Sim.localPlayer].GetRoom() == ROOM_AIRPORT &&
-                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + 320 - Doors[c].ArrayPos.x * 44) < 400) {
+                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + kScreenW / 2 - Doors[c].ArrayPos.x * 44) < 400) {
                         gArabDoorFx.Play(DSBPLAY_NOSTOP, Sim.Options.OptionEffekte * 100 / 7);
                     }
                 }
@@ -3886,7 +3899,7 @@ void AIRPORT::TryDoor(XY ArrayPos, BOOL Player, SLONG PlayerNum) {
             if (Doors[c].Dir != 1 && Doors[c].State == 0) {
                 if (bIngnoreNextDoor == FALSE) {
                     if (Sim.Players.Players[Sim.localPlayer].GetRoom() == ROOM_AIRPORT &&
-                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + 320 - Doors[c].ArrayPos.x * 44) < 400 && Doors[c].ArabDoor != 3) {
+                        abs(Sim.Players.Players[Sim.localPlayer].ViewPos.x + kScreenW / 2 - Doors[c].ArrayPos.x * 44) < 400 && Doors[c].ArabDoor != 3) {
                         gDoorOpen.Play(DSBPLAY_NOSTOP, Sim.Options.OptionEffekte * 100 / 7);
                     }
                 }
@@ -4176,8 +4189,9 @@ void AIRPORT::DoHashBuilds() {
 
         for (d = 0; d < Builds.AnzEntries(); d++) {
             if (Builds.IsInAlbum(d) != 0) {
-                if (Builds[d].ScreenPos.x + Bricks[Builds[d].BrickId].Bitmap[0].Size.x > LeftEnd + c * BUILDHASHSIZE &&
-                    Builds[d].ScreenPos.x <= LeftEnd + (c + 3) * BUILDHASHSIZE) {
+                // Ganzer Bildschirm ab jeder Position im Bucket, plus ein Bucket Reserve auf beiden Seiten
+                if (Builds[d].ScreenPos.x + Bricks[Builds[d].BrickId].Bitmap[0].Size.x > LeftEnd + (c - 1) * BUILDHASHSIZE &&
+                    Builds[d].ScreenPos.x <= LeftEnd + (c + 2) * BUILDHASHSIZE + kScreenW) {
                     HashBuilds[c] *= Builds[d];
                 }
             }
@@ -4420,6 +4434,9 @@ TEAKFILE &operator>>(TEAKFILE &File, AIRPORT &Airport) {
     for (auto &c : Airport.HallLevel) {
         File >> c;
     }
+
+    // Die gespeicherten Hash-Bricks hängen von der alten Bildschirmbreite ab, daher neu berechnen:
+    Airport.DoHashBuilds();
 
     return (File);
 }

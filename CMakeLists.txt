@@ -61,4 +61,5 @@ add_subdirectory (libs)
 
 # Include sub-projects.
 add_subdirectory (src)
+add_subdirectory (tools/gli)
 

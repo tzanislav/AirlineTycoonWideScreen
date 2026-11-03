@@ -202,7 +202,33 @@ void GameFrame::UpdateWindow() const {
     UpdateFrameSize();
 }
 
-constexpr SLONG getAspectWidth(SLONG height) { return static_cast<SLONG>(static_cast<float>(height) * (640.0f / 480.0f)); }
+// Breite des aktuell sichtbaren Backbuffer-Ausschnitts: kScreenW auf dem Flughafen, sonst kLegacyW (4:3)
+static SLONG gActiveScreenW = kLegacyW;
+
+static SLONG CalcActiveScreenW() {
+    if (Sim.localPlayer >= 0 && Sim.localPlayer < Sim.Players.Players.AnzEntries()) {
+        const CStdRaum *pWin = Sim.Players.Players[Sim.localPlayer].LocationWin;
+        if (pWin != nullptr && (pWin->IsWideScreen() != 0)) {
+            return kScreenW;
+        }
+    }
+    return kLegacyW;
+}
+
+// Zielrechteck im Fenster für den sichtbaren Ausschnitt (Pillar- bzw. Letterbox)
+static SDL_Rect CalcTargetRect(SLONG screenW, SLONG screenH) {
+    if (Sim.Options.OptionKeepAspectRatio == 0) {
+        return SDL_Rect{0, 0, screenW, screenH};
+    }
+
+    SLONG w = screenH * gActiveScreenW / kScreenH;
+    SLONG h = screenH;
+    if (w > screenW) {
+        w = screenW;
+        h = screenW * kScreenH / gActiveScreenW;
+    }
+    return SDL_Rect{(screenW - w) / 2, (screenH - h) / 2, w, h};
+}
 
 void GameFrame::UpdateFrameSize() const {
     SLONG screenW = 0, screenH = 0;
@@ -211,13 +237,17 @@ void GameFrame::UpdateFrameSize() const {
     // update setting file
     Sim.Options.OptionScreenWindowedWidth = screenW;
     Sim.Options.OptionScreenWindowedHeight = screenH;
-    if (Sim.Options.OptionKeepAspectRatio == 0) {
-        PrimaryBm.PrimaryBm.SetTarget(XY{0, 0}, XY{screenW, screenH});
-    } else {
-        const SLONG aspectWidth = getAspectWidth(screenH);
 
-        const SLONG x = (screenW - aspectWidth) / 2;
-        PrimaryBm.PrimaryBm.SetTarget(XY{x, 0}, XY{aspectWidth, screenH});
+    const SDL_Rect target = CalcTargetRect(screenW, screenH);
+    PrimaryBm.PrimaryBm.SetSource(XY{gActiveScreenW, kScreenH});
+    PrimaryBm.PrimaryBm.SetTarget(XY{target.x, target.y}, XY{target.w, target.h});
+}
+
+void GameFrame::UpdateActiveScreenWidth() const {
+    const SLONG newW = CalcActiveScreenW();
+    if (newW != gActiveScreenW) {
+        gActiveScreenW = newW;
+        UpdateFrameSize();
     }
 }
 
@@ -226,20 +256,15 @@ void GameFrame::TranslatePointToGameSpace(CPoint *p) const {
     SLONG screenH = 0;
     SDL_GetRendererOutputSize(SDL_GetRenderer(m_hWnd), &screenW, &screenH);
 
-    FLOAT x = static_cast<FLOAT>(p->x);
-    FLOAT y = static_cast<FLOAT>(p->y);
+    const SDL_Rect target = CalcTargetRect(screenW, screenH);
 
-    if (Sim.Options.OptionKeepAspectRatio == 1) {
-        const SLONG aspectWidth = getAspectWidth(screenH);
-        x -= static_cast<FLOAT>(screenW - aspectWidth) / 2.0f;
+    FLOAT x = static_cast<FLOAT>(p->x - target.x);
+    FLOAT y = static_cast<FLOAT>(p->y - target.y);
 
-        screenW = aspectWidth;
-    }
-
-    x /= static_cast<FLOAT>(screenW);
-    x *= 640;
-    y /= static_cast<FLOAT>(screenH);
-    y *= 480;
+    x /= static_cast<FLOAT>(target.w);
+    x *= static_cast<FLOAT>(gActiveScreenW);
+    y /= static_cast<FLOAT>(target.h);
+    y *= kScreenH;
 
     p->x = static_cast<SLONG>(x);
     p->y = static_cast<SLONG>(y);
@@ -250,25 +275,17 @@ void GameFrame::TranslatePointToScreenSpace(SLONG &x, SLONG &y) const {
     SLONG screenH = 0;
     SDL_GetRendererOutputSize(SDL_GetRenderer(m_hWnd), &screenW, &screenH);
 
-    const SLONG aspectWidth = getAspectWidth(screenH);
-    const SLONG origScreenW = screenW;
-    if (Sim.Options.OptionKeepAspectRatio == 1) {
-        screenW = aspectWidth;
-    }
+    const SDL_Rect target = CalcTargetRect(screenW, screenH);
 
     FLOAT _x = static_cast<FLOAT>(x);
     FLOAT _y = static_cast<FLOAT>(y);
-    _x /= 640;
-    _x *= static_cast<FLOAT>(screenW);
-    _y /= 480;
-    _y *= static_cast<FLOAT>(screenH);
+    _x /= static_cast<FLOAT>(gActiveScreenW);
+    _x *= static_cast<FLOAT>(target.w);
+    _y /= kScreenH;
+    _y *= static_cast<FLOAT>(target.h);
 
-    if (Sim.Options.OptionKeepAspectRatio == 1) {
-        _x += static_cast<FLOAT>(origScreenW - aspectWidth) / 2.0f;
-    }
-
-    x = static_cast<SLONG>(_x);
-    y = static_cast<SLONG>(_y);
+    x = static_cast<SLONG>(_x) + target.x;
+    y = static_cast<SLONG>(_y) + target.y;
 }
 
 //--------------------------------------------------------------------------------------------
@@ -324,8 +341,8 @@ GameFrame::GameFrame() {
 
     pGfxMain = new GfxMain(lpDD);
 
-    PrimaryBm.ReSize(h, bFullscreen, XY(640, 480));
-    PrimaryBm.ReSizePartB(h, bFullscreen, XY(640, 480));
+    PrimaryBm.ReSize(h, bFullscreen, XY(kScreenW, kScreenH));
+    PrimaryBm.ReSizePartB(h, bFullscreen, XY(kScreenW, kScreenH));
     pCursor = new SB_CCursor(&PrimaryBm.PrimaryBm);
     PrimaryBm.PrimaryBm.AssignCursor(pCursor);
 
@@ -589,8 +606,8 @@ void GameFrame::PrepareFade() {
         SB_CBitmapKey TgtKey(*gBlendBm.pBitmap);
 
         if (SrcKey.Bitmap != nullptr) {
-            for (SLONG y = 0; y < 480; y++) {
-                memcpy(static_cast<char *>(TgtKey.Bitmap) + y * TgtKey.lPitch, static_cast<char *>(SrcKey.Bitmap) + y * SrcKey.lPitch, 640 * 2);
+            for (SLONG y = 0; y < kScreenH; y++) {
+                memcpy(static_cast<char *>(TgtKey.Bitmap) + y * TgtKey.lPitch, static_cast<char *>(SrcKey.Bitmap) + y * SrcKey.lPitch, kScreenW * 2);
             }
         }
     }
@@ -662,7 +679,7 @@ void GameFrame::OnPaint() {
                         str = ToolTipString;
                     }
 
-                    SLONG SizeX = 640;
+                    SLONG SizeX = kLegacyW;
 
                     while (SizeX > 0) {
                         SLONG Size = gToolTipBm.TryPrintAt(str, FontBigGrey, TEC_FONT_LEFT, 0, 0, SizeX, 25);
@@ -673,7 +690,7 @@ void GameFrame::OnPaint() {
                         }
                     }
 
-                    while (SizeX < 640) {
+                    while (SizeX < kLegacyW) {
                         SLONG Size = gToolTipBm.TryPrintAt(str, FontBigGrey, TEC_FONT_LEFT, 0, 0, SizeX, 25);
                         if (Size < 0 || Size >= 25) {
                             SizeX += 8;
@@ -700,7 +717,7 @@ void GameFrame::OnPaint() {
                     gToolTipBm.BlitFrom(gToolTipBms[2], SizeX - 28, 0);
 
                     gToolTipBm.PrintAt(str, FontBigGrey, TEC_FONT_CENTERED, 0, 2, SizeX, 28);
-                    Limit(SLONG(0), ToolTipPos.x, 639 - SizeX);
+                    Limit(SLONG(0), ToolTipPos.x, gActiveScreenW - 1 - SizeX);
 
                     ToolTipState = TRUE;
                 }
@@ -715,22 +732,22 @@ void GameFrame::OnPaint() {
                 if (px < 2) {
                     px = 2;
                 }
-                if (px > 639 - gToolTipBm.Size.x) {
-                    px = 639 - gToolTipBm.Size.x;
+                if (px > gActiveScreenW - 1 - gToolTipBm.Size.x) {
+                    px = gActiveScreenW - 1 - gToolTipBm.Size.x;
                 }
 
-                if (gMousePosition.y < 439) {
+                if (gMousePosition.y < kStatusBarY - 1) {
                     py = gMousePosition.y + 32;
                 } else {
                     py = gMousePosition.y;
-                    if (gMousePosition.x + 32 + gToolTipBm.Size.x < 630) {
+                    if (gMousePosition.x + 32 + gToolTipBm.Size.x < gActiveScreenW - 10) {
                         px = gMousePosition.x + 32;
                     } else {
                         px = gMousePosition.x - 5 - gToolTipBm.Size.x;
                     }
 
-                    if (py > 480 - 28) {
-                        py = 480 - 28;
+                    if (py > kScreenH - 28) {
+                        py = kScreenH - 28;
                     }
                 }
 
@@ -798,6 +815,7 @@ void GameFrame::OnPaint() {
         }
 
         SDL_GetWindowPosition(m_hWnd, &rcWindow.x, &rcWindow.y);
+        UpdateActiveScreenWidth();
         PrimaryBm.Flip(rcWindow.x, rcWindow.y, TRUE);
     }
     if ((bActive != 0) && (Sim.bPause != 0)) {
@@ -824,8 +842,8 @@ void GameFrame::OnPaint() {
                 SB_CBitmapKey SrcKey(PrimaryBm.PrimaryBm);
                 SB_CBitmapKey TgtKey(*gBlendBm.pBitmap);
 
-                for (SLONG y = 0; y < 480; y++) {
-                    memcpy(static_cast<char *>(TgtKey.Bitmap) + y * TgtKey.lPitch, static_cast<char *>(SrcKey.Bitmap) + y * SrcKey.lPitch, 640 * 2);
+                for (SLONG y = 0; y < kScreenH; y++) {
+                    memcpy(static_cast<char *>(TgtKey.Bitmap) + y * TgtKey.lPitch, static_cast<char *>(SrcKey.Bitmap) + y * SrcKey.lPitch, kScreenW * 2);
                 }
             }
 
@@ -844,6 +862,7 @@ void GameFrame::OnPaint() {
         }
 
         SDL_GetWindowPosition(m_hWnd, &rcWindow.x, &rcWindow.y);
+        UpdateActiveScreenWidth();
         PrimaryBm.Flip(rcWindow.x, rcWindow.y, TRUE);
     }
 }
@@ -1494,7 +1513,7 @@ void GameFrame::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
                                             switch (nChar) {
                                             case ATKEY_TAB:
                                                 (qPlayer.LocationWin)->MenuStart(MENU_REQUEST, MENU_REQUEST_CALLITADAY, 0);
-                                                (qPlayer.LocationWin)->MenuSetZoomStuff(XY(320, 220), 0.17, FALSE);
+                                                (qPlayer.LocationWin)->MenuSetZoomStuff(XY(kLegacyW / 2, 220), 0.17, FALSE);
                                                 nChar = 0;
                                                 break;
 

@@ -419,7 +419,7 @@ void CLAN::BlitLargeAt(SBBM &Offscreen, SLONG Dir, SLONG Phase, XY ScreenPos) {
 
     if (pbm != nullptr) {
         if (pbm->pBitmap != nullptr) {
-            if (ScreenPos.x > -60 && ScreenPos.x < 700) {
+            if (ScreenPos.x > -60 && ScreenPos.x < kScreenW + 60) {
                 Size = XY(pbm->Size.x / 2, pbm->Size.y - 1) * SLONG(2);
                 SDL_Rect SrcRect = {0, 0, pbm->pBitmap->GetXSize(), pbm->pBitmap->GetYSize()};
                 SDL_Rect DestRect = {ScreenPos.x - Size.x, ScreenPos.y - pbm->pBitmap->GetYSize() * 2, ScreenPos.x - Size.x + pbm->pBitmap->GetXSize() * 2,
