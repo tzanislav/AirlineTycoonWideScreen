@@ -950,6 +950,9 @@ void CStdRaum::RepaintText(BOOL RefreshAll) {
                     LeftBorder = 80;
                 }
 
+                // Breitbild: Die Blase hängt rechts am Partner und behält ihre 4:3-Breite, sonst reichen die Blasengrafiken nicht bis zur Mitte
+                LeftBorder += max(SLONG(0), WinP2.x - WinP1.x - kLegacyW);
+
                 SLONG Summe = OnscreenBitmap.TryPrintAt(Optionen[0], *pFontNormal, TEC_FONT_LEFT, LeftBorder + 45, 0, BubblePos.x - 40, 400);
 
                 if (RefreshAll != 0) {
@@ -1867,7 +1870,7 @@ void CStdRaum::StartDialog(SLONG DialogPartner, BOOL Medium, SLONG DialogPar1, S
         pFontPartner = &FontDialogPartner;
         Sim.Players.Players[DialogPar1].IsTalking = TRUE;
 
-        BubblePos = XY(640 - BeraterSprechblasenOffset[12 + DialogPar1].x, 380);
+        BubblePos = XY(WinP2.x - BeraterSprechblasenOffset[12 + DialogPar1].x, 380);
         BubbleStyle = 1;
 
         if (DialogPar2 < 0 || DialogPar2 > 1) {
@@ -2751,7 +2754,7 @@ void CStdRaum::PostPaint() {
             StatusCount = max(StatusCount, 3);
 
             if (qMessages.AktuellerBeraterTyp < 100) { // Berater rechts, andere links
-                PrimaryBm.BlitFromT(BeraterBms[qMessages.AktuelleBeraterBitmap][0], 640 - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x,
+                PrimaryBm.BlitFromT(BeraterBms[qMessages.AktuelleBeraterBitmap][0], WinP2.x - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x,
                                     qPlayer.Messages.BeraterPosY);
             } else {
                 if (DontDisplayPlayer == -1 && (IsInBuro == 0)) {
@@ -2904,12 +2907,12 @@ void CStdRaum::PostPaint() {
         if (DialogPartner == TALKER_COMPETITOR) {
             if (AtGetTime() > DWORD(SmackerTimeToTalk) || TextAlign != 0 || ((TalkingSpeechFx > 0 && !SpeechFx.pFX->IsMouthOpen(200)))) {
                 PrimaryBm.FlipBlitFromT(BeraterBms[12 + DialogPar1][static_cast<SLONG>(DialogMedium == MEDIUM_HANDY) * 4],
-                                        XY(640 - BeraterBms[12 + DialogPar1][0].Size.x,
+                                        XY(WinP2.x - BeraterBms[12 + DialogPar1][0].Size.x,
                                            440 - BeraterSlideY[12 + DialogPar1 + static_cast<SLONG>(DialogMedium == MEDIUM_HANDY) * 4]));
             } else {
                 PrimaryBm.FlipBlitFromT(BeraterBms[12 + DialogPar1]["\x0\x2\x1\x3\x2\x3\x0\x1\x2"[(AtGetTime() / 50 / 3) & 7] +
                                                                     static_cast<SLONG>(DialogMedium == MEDIUM_HANDY) * 4],
-                                        XY(640 - BeraterBms[12 + DialogPar1][0].Size.x,
+                                        XY(WinP2.x - BeraterBms[12 + DialogPar1][0].Size.x,
                                            440 - BeraterSlideY[12 + DialogPar1 + static_cast<SLONG>(DialogMedium == MEDIUM_HANDY) * 4]));
             }
 
@@ -2919,7 +2922,7 @@ void CStdRaum::PostPaint() {
                 if (OnscreenBitmap.pBitmap == nullptr) {
                     if (DisplayThisBubble != 0) {
                         ColorFX.BlitTrans(MoodBms[MoodPersonEmpty].pBitmap, &PrimaryBm.PrimaryBm,
-                                          XY(640 - BeraterBms[12 + DialogPar1][0].Size.x,
+                                          XY(WinP2.x - BeraterBms[12 + DialogPar1][0].Size.x,
                                              440 - BeraterSlideY[12 + DialogPar1 + static_cast<SLONG>(DialogMedium == MEDIUM_HANDY) * 4]) -
                                               XY(-5, MoodBms[MoodPersonEmpty].Size.y),
                                           nullptr, 4);
@@ -3032,7 +3035,7 @@ void CStdRaum::PostPaint() {
                 PrimaryBm.BlitFromT(
                     BeraterBms[qMessages.AktuelleBeraterBitmap]["\0\0\x1\0\x1\x1"[(qMessages.TalkPhase / 3) % 6] +
                                                                 (static_cast<SLONG>(qMessages.BlinkCountdown > 0) * BeraterBms[0].AnzEntries() / 2)],
-                    640 - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x, qMessages.BeraterPosY);
+                    WinP2.x - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x, qMessages.BeraterPosY);
             } else if (DontDisplayPlayer == -1 && (IsInBuro == 0)) {
                 PrimaryBm.BlitFromT(BeraterBms[qMessages.AktuelleBeraterBitmap]
                                               ["\x0\x2\x1\x3\x2\x3\x0\x1\x2"[static_cast<SLONG>(TalkingSpeechFx == 0 || SpeechFx.pFX->IsMouthOpen(200)) *
@@ -3046,21 +3049,21 @@ void CStdRaum::PostPaint() {
 
             if (qMessages.Messages[static_cast<SLONG>(0)].Message.GetLength() > 0 && qMessages.AktuellerBeraterTyp < 100) {
                 ColorFX.BlitWhiteTrans(TRUE, qMessages.SprechblaseBm.pBitmap, &PrimaryBm.PrimaryBm,
-                                       XY(640 - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x +
+                                       XY(WinP2.x - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x +
                                               BeraterSprechblasenOffset[qMessages.AktuelleBeraterBitmap].x - qMessages.SprechblaseBm.Size.x,
                                           qMessages.BeraterPosY + BeraterSprechblasenOffset[qMessages.AktuelleBeraterBitmap].y));
 
                 if (qMessages.Messages[static_cast<SLONG>(0)].Mood != -1) {
                     if (qMessages.Messages[static_cast<SLONG>(0)].BubbleType == 1) {
                         ColorFX.BlitTrans(SmileyBms[qMessages.Messages[static_cast<SLONG>(0)].Mood].pBitmap, &PrimaryBm.PrimaryBm,
-                                          XY(640 - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x +
+                                          XY(WinP2.x - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x +
                                                  BeraterSprechblasenOffset[qMessages.AktuelleBeraterBitmap].x - qMessages.SprechblaseBm.Size.x,
                                              qMessages.BeraterPosY + BeraterSprechblasenOffset[qMessages.AktuelleBeraterBitmap].y) +
                                               XY(5, 7),
                                           nullptr, 2);
                     } else if (qMessages.Messages[static_cast<SLONG>(0)].BubbleType == 2) {
                         ColorFX.BlitTrans(SmileyBms[qMessages.Messages[static_cast<SLONG>(0)].Mood].pBitmap, &PrimaryBm.PrimaryBm,
-                                          XY(640 - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x +
+                                          XY(WinP2.x - BeraterBms[qMessages.AktuelleBeraterBitmap][0].Size.x +
                                                  BeraterSprechblasenOffset[qMessages.AktuelleBeraterBitmap].x - qMessages.SprechblaseBm.Size.x,
                                              qMessages.BeraterPosY + BeraterSprechblasenOffset[qMessages.AktuelleBeraterBitmap].y) +
                                               XY(7, 18),
@@ -3301,7 +3304,7 @@ void CStdRaum::OnLButtonDown(UINT /*unused*/, CPoint point) {
         MenuSetZoomStuff(XY(100, 470), 0.17, FALSE);
     }
     // Cancel Tutorial:
-    else if ((Sim.IsTutorial != 0) && gMousePosition.IfIsWithin(640 - 32 - 39, 440, 607, 479) && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
+    else if ((Sim.IsTutorial != 0) && gMousePosition.IfIsWithin(WinP2.x - 32 - 39, kStatusBarY, WinP2.x - 33, kScreenH - 1) && (IsDialogOpen() == 0) && (MenuIsOpen() == 0)) {
         PLAYER &qPlayer = Sim.Players.Players[Sim.localPlayer];
 
         gStatButton = 1;
