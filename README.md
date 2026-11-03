@@ -5,6 +5,12 @@
 This is a fork of [WizzardMaker/AirlineTycoon](https://github.com/WizzardMaker/AirlineTycoon) that adds 16:9 widescreen support.
 Changes are on the `develop` branch.
 
+| Before (4:3) | After (16:9) |
+|---|---|
+| ![Airport view in the original 4:3](src/Docs/images/before-4x3.png) | ![Airport view in 16:9 widescreen](src/Docs/images/after-16x9.png) |
+
+Video (click to watch on YouTube):
+
 [![Airline Tycoon Wide Screen Mod](https://img.youtube.com/vi/5WVrUj14UTs/maxresdefault.jpg)](https://www.youtube.com/watch?v=5WVrUj14UTs)
 
 - **16:9 airport view** – the airport renders at 854×480 instead of 640×480, so you see more of the terminal at once.
